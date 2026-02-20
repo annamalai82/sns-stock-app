@@ -3,7 +3,7 @@
 
 import React, { useState, useEffect, useRef, useCallback } from 'react';
 import { STAFF, SECTIONS, LOCATIONS, QUICK_REPLIES, DEFAULT_THRESHOLDS, dateKey, timeNow } from './config';
-import { loadData, saveData } from './storage';
+import { loadData, saveData, onDataChange } from './storage';
 import { generateResponse, parseStock, detectSection, detectLocation } from './engine';
 import LogBook from './LogBook';
 
@@ -239,30 +239,65 @@ export default function App() {
   const endRef = useRef(null);
   const inRef = useRef(null);
 
-  // Load persisted data
+  // Load persisted data + subscribe to real-time updates from Firebase
   useEffect(() => {
-    const savedLogs = loadData('logs', {});
-    const savedXfers = loadData('xfers', []);
-    const savedTh = loadData('thresholds', DEFAULT_THRESHOLDS);
-    setLogs(savedLogs);
-    setXfers(savedXfers);
-    setThresholds(savedTh);
+    let mounted = true;
 
-    const sd = {};
-    for (const d of Object.keys(savedLogs).sort().reverse()) {
-      for (const log of savedLogs[d]) {
-        const loc = log.location || 'Vic Park';
-        const sec = log.section || 'General';
-        if (!sd[loc]) sd[loc] = {};
-        if (!sd[loc][sec]) sd[loc][sec] = log.items || [];
+    // Initial load (async for Firebase)
+    (async () => {
+      const savedLogs = await loadData('logs', {});
+      const savedXfers = await loadData('xfers', []);
+      const savedTh = await loadData('thresholds', DEFAULT_THRESHOLDS);
+      if (!mounted) return;
+      setLogs(savedLogs);
+      setXfers(savedXfers);
+      setThresholds(savedTh);
+
+      // Rebuild stock snapshot
+      const sd = {};
+      for (const d of Object.keys(savedLogs).sort().reverse()) {
+        for (const log of savedLogs[d]) {
+          const loc = log.location || 'Vic Park';
+          const sec = log.section || 'General';
+          if (!sd[loc]) sd[loc] = {};
+          if (!sd[loc][sec]) sd[loc][sec] = log.items || [];
+        }
       }
-    }
-    if (Object.keys(sd).length) setStock(sd);
+      if (Object.keys(sd).length) setStock(sd);
 
-    const lastUser = loadData('lastUser', null);
-    const lastBranch = loadData('lastBranch', null);
-    if (lastUser) setUser(lastUser);
-    if (lastBranch) setBranch(lastBranch);
+      // Restore device-specific user/branch
+      const lastUser = await loadData('lastUser', null);
+      const lastBranch = await loadData('lastBranch', null);
+      if (mounted && lastUser) setUser(lastUser);
+      if (mounted && lastBranch) setBranch(lastBranch);
+    })();
+
+    // Real-time listeners — when another device saves, we get updated instantly
+    const unsub1 = onDataChange('logs', (newLogs) => {
+      if (!mounted) return;
+      setLogs(newLogs);
+      // Rebuild stock from fresh logs
+      const sd = {};
+      for (const d of Object.keys(newLogs).sort().reverse()) {
+        for (const log of newLogs[d]) {
+          const loc = log.location || 'Vic Park';
+          const sec = log.section || 'General';
+          if (!sd[loc]) sd[loc] = {};
+          if (!sd[loc][sec]) sd[loc][sec] = log.items || [];
+        }
+      }
+      if (Object.keys(sd).length) setStock(sd);
+    });
+
+    const unsub2 = onDataChange('xfers', (newXfers) => {
+      if (mounted) setXfers(newXfers);
+    });
+
+    const unsub3 = onDataChange('thresholds', (newTh) => {
+      if (mounted) setThresholds(newTh);
+    });
+
+    return () => { mounted = false; unsub1(); unsub2(); unsub3(); };
   }, []);
 
   useEffect(() => { endRef.current?.scrollIntoView({ behavior: 'smooth' }); }, [msgs]);
