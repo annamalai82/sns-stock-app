@@ -1,22 +1,23 @@
 // App.js — Main application shell
+// Features: Branch selector, threshold settings, log book, chat
 
 import React, { useState, useEffect, useRef, useCallback } from 'react';
-import { STAFF, SECTIONS, QUICK_REPLIES, dateKey, timeNow } from './config';
+import { STAFF, SECTIONS, LOCATIONS, QUICK_REPLIES, DEFAULT_THRESHOLDS, dateKey, timeNow } from './config';
 import { loadData, saveData } from './storage';
 import { generateResponse, parseStock, detectSection, detectLocation } from './engine';
 import LogBook from './LogBook';
 
-// ─── Styles ──────────────────────────────────────────────────────────────────
 const GLOBAL_CSS = `
   * { box-sizing: border-box; }
   @keyframes fadeIn { from { opacity:0; transform:translateY(10px) } to { opacity:1; transform:translateY(0) } }
   @keyframes slideIn { from { opacity:0; transform:translateY(6px) } to { opacity:1; transform:translateY(0) } }
   @keyframes slideUp { from { transform:translateY(100%) } to { transform:translateY(0) } }
-  @keyframes pulse { 0%,100% { opacity:1 } 50% { opacity:.5 } }
-  textarea:focus, button:focus, select:focus { outline: none; }
+  @keyframes pulse { 0%,100%{opacity:1} 50%{opacity:.5} }
+  textarea:focus, button:focus, select:focus, input:focus { outline: none; }
   ::-webkit-scrollbar { width: 5px; }
   ::-webkit-scrollbar-thumb { background: #c5c5c5; border-radius: 4px; }
   body { overscroll-behavior: none; }
+  input[type=number]::-webkit-inner-spin-button { opacity: 1; }
 `;
 
 // ─── Bubble ──────────────────────────────────────────────────────────────────
@@ -25,27 +26,18 @@ function Bubble({ message }) {
   const bgMap = { alert: '#FEF3C7', 'stock-update': '#D1FAE5', 'stock-report': '#DBEAFE', transfer: '#EDE9FE' };
   const bg = isUser ? '#DCF8C6' : (bgMap[message.type] || '#fff');
   const fmt = t => t.replace(/\*([^*]+)\*/g, '<strong>$1</strong>').replace(/_([^_]+)_/g, '<em>$1</em>').replace(/\n/g, '<br/>');
-
   return (
     <div style={{ display: 'flex', justifyContent: isUser ? 'flex-end' : 'flex-start', padding: '2px 12px', animation: 'slideIn .2s ease' }}>
-      <div style={{
-        maxWidth: isUser ? '78%' : '88%', background: bg,
-        borderRadius: isUser ? '14px 14px 0 14px' : '14px 14px 14px 0',
-        padding: '8px 12px', boxShadow: '0 1px 2px rgba(0,0,0,.06)',
-      }}>
-        <div style={{ fontSize: 13.5, lineHeight: 1.45, color: '#111', whiteSpace: 'pre-wrap', wordBreak: 'break-word' }}
-          dangerouslySetInnerHTML={{ __html: fmt(message.text) }} />
-        <div style={{ fontSize: 10, color: '#8696A0', textAlign: 'right', marginTop: 3 }}>
-          {message.time}
-          {isUser && <span style={{ marginLeft: 4, color: '#53BDEB' }}>✓✓</span>}
-        </div>
+      <div style={{ maxWidth: isUser ? '78%' : '88%', background: bg, borderRadius: isUser ? '14px 14px 0 14px' : '14px 14px 14px 0', padding: '8px 12px', boxShadow: '0 1px 2px rgba(0,0,0,.06)' }}>
+        <div style={{ fontSize: 13.5, lineHeight: 1.45, color: '#111', whiteSpace: 'pre-wrap', wordBreak: 'break-word' }} dangerouslySetInnerHTML={{ __html: fmt(message.text) }} />
+        <div style={{ fontSize: 10, color: '#8696A0', textAlign: 'right', marginTop: 3 }}>{message.time}{isUser && <span style={{ marginLeft: 4, color: '#53BDEB' }}>✓✓</span>}</div>
       </div>
     </div>
   );
 }
 
 // ─── Template Modal ──────────────────────────────────────────────────────────
-function TemplateModal({ open, onClose, onSelect }) {
+function TemplateModal({ open, onClose, onSelect, activeBranch }) {
   if (!open) return null;
   return (
     <div style={{ position: 'fixed', inset: 0, background: 'rgba(0,0,0,.5)', zIndex: 100, display: 'flex', alignItems: 'flex-end', justifyContent: 'center' }} onClick={onClose}>
@@ -54,7 +46,7 @@ function TemplateModal({ open, onClose, onSelect }) {
           <h3 style={{ margin: 0, fontSize: 16, fontWeight: 700, color: '#064E3B' }}>📋 Stock Templates</h3>
           <button onClick={onClose} style={{ background: 'none', border: 'none', fontSize: 22, cursor: 'pointer', color: '#999' }}>✕</button>
         </div>
-        <p style={{ fontSize: 12, color: '#6B7280', margin: '0 0 12px' }}>Tap section → fill quantities → send!</p>
+        <p style={{ fontSize: 12, color: '#6B7280', margin: '0 0 12px' }}>Logging to: <strong>📍 {activeBranch}</strong>. Tap section → fill quantities → send!</p>
         <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 8 }}>
           {Object.entries(SECTIONS).map(([name, sec]) => (
             <button key={name} onClick={() => onSelect(name, sec)} style={{
@@ -73,12 +65,125 @@ function TemplateModal({ open, onClose, onSelect }) {
   );
 }
 
+// ─── Threshold Settings Modal ────────────────────────────────────────────────
+function ThresholdSettings({ open, onClose, thresholds, onSave }) {
+  const [editSec, setEditSec] = useState(null);
+  const [local, setLocal] = useState({});
+
+  useEffect(() => { if (open) setLocal({ ...thresholds }); }, [open, thresholds]);
+
+  if (!open) return null;
+
+  const updateItem = (name, val) => {
+    setLocal(prev => ({ ...prev, [name]: Math.max(0, parseInt(val) || 0) }));
+  };
+
+  return (
+    <div style={{ position: 'fixed', inset: 0, background: 'rgba(0,0,0,.5)', zIndex: 150, display: 'flex', alignItems: 'center', justifyContent: 'center', padding: 16 }} onClick={onClose}>
+      <div style={{ background: '#fff', borderRadius: 20, width: '100%', maxWidth: 480, maxHeight: '85vh', display: 'flex', flexDirection: 'column', animation: 'fadeIn .25s ease', overflow: 'hidden' }} onClick={e => e.stopPropagation()}>
+        {/* Header */}
+        <div style={{ padding: '16px 20px', borderBottom: '1px solid #E5E7EB', flexShrink: 0 }}>
+          <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+            <div>
+              <h3 style={{ margin: 0, fontSize: 17, fontWeight: 800, color: '#064E3B' }}>⚙️ Threshold Settings</h3>
+              <p style={{ margin: '2px 0 0', fontSize: 12, color: '#6B7280' }}>Set minimum stock levels per item. Items at or below this trigger alerts.</p>
+            </div>
+            <button onClick={onClose} style={{ background: 'none', border: 'none', fontSize: 22, cursor: 'pointer', color: '#999' }}>✕</button>
+          </div>
+          {/* Default threshold */}
+          <div style={{ display: 'flex', alignItems: 'center', gap: 10, marginTop: 12, padding: '8px 12px', background: '#F0FDF4', borderRadius: 10, border: '1px solid #BBF7D0' }}>
+            <span style={{ fontSize: 13, fontWeight: 600, color: '#064E3B', flex: 1 }}>Global Default Threshold</span>
+            <input type="number" min={0} value={local.default || 2} onChange={e => updateItem('default', e.target.value)}
+              style={{ width: 60, padding: '4px 8px', borderRadius: 8, border: '1px solid #D1D5DB', fontSize: 14, fontWeight: 700, textAlign: 'center', fontFamily: 'inherit' }} />
+          </div>
+        </div>
+
+        {/* Section tabs */}
+        <div style={{ display: 'flex', gap: 4, overflowX: 'auto', padding: '10px 20px 0', flexShrink: 0 }}>
+          {Object.entries(SECTIONS).map(([k, v]) => (
+            <button key={k} onClick={() => setEditSec(k)} style={{
+              flexShrink: 0, padding: '5px 10px', borderRadius: 8, fontSize: 11, fontWeight: 600, cursor: 'pointer', fontFamily: 'inherit',
+              border: editSec === k ? '2px solid #10B981' : '1px solid #E5E7EB',
+              background: editSec === k ? '#D1FAE5' : '#fff', color: editSec === k ? '#064E3B' : '#6B7280',
+            }}>{v.icon} {k}</button>
+          ))}
+        </div>
+
+        {/* Items for selected section */}
+        <div style={{ flex: 1, overflowY: 'auto', padding: '10px 20px' }}>
+          {!editSec && <div style={{ textAlign: 'center', padding: '32px 0', color: '#9CA3AF', fontSize: 13 }}>👆 Select a section above to edit item thresholds</div>}
+          {editSec && SECTIONS[editSec] && (
+            <div style={{ display: 'flex', flexDirection: 'column', gap: 4 }}>
+              {SECTIONS[editSec].items.map(item => (
+                <div key={item} style={{ display: 'flex', alignItems: 'center', gap: 8, padding: '6px 0', borderBottom: '1px solid #F3F4F6' }}>
+                  <span style={{ flex: 1, fontSize: 13, color: '#374151' }}>{item}</span>
+                  <input type="number" min={0}
+                    value={local[item] !== undefined ? local[item] : (local.default || 2)}
+                    onChange={e => updateItem(item, e.target.value)}
+                    style={{ width: 60, padding: '4px 8px', borderRadius: 8, border: '1px solid #D1D5DB', fontSize: 13, fontWeight: 600, textAlign: 'center', fontFamily: 'inherit' }}
+                  />
+                </div>
+              ))}
+            </div>
+          )}
+        </div>
+
+        {/* Save button */}
+        <div style={{ padding: '12px 20px', borderTop: '1px solid #E5E7EB', flexShrink: 0 }}>
+          <button onClick={() => { onSave(local); onClose(); }} style={{
+            width: '100%', padding: '12px', background: '#064E3B', color: '#fff', border: 'none',
+            borderRadius: 12, fontSize: 14, fontWeight: 700, cursor: 'pointer', fontFamily: 'inherit',
+          }}>💾 Save Thresholds</button>
+        </div>
+      </div>
+    </div>
+  );
+}
+
+// ─── Branch Selector (shown after login) ─────────────────────────────────────
+function BranchSelector({ onSelect, userName }) {
+  return (
+    <div style={{
+      position: 'fixed', inset: 0, background: 'linear-gradient(145deg, #064E3B, #047857)',
+      display: 'flex', alignItems: 'center', justifyContent: 'center',
+      fontFamily: "'Segoe UI', sans-serif", padding: 20, zIndex: 300,
+    }}>
+      <div style={{ textAlign: 'center', maxWidth: 360, width: '100%', animation: 'fadeIn .4s ease' }}>
+        <div style={{ fontSize: 44, marginBottom: 8 }}>📍</div>
+        <h2 style={{ color: '#fff', fontSize: 22, fontWeight: 800, margin: '0 0 4px' }}>Select Branch</h2>
+        <p style={{ color: '#A7F3D0', fontSize: 13, margin: '0 0 24px' }}>Hi {userName}! Which location are you logging stock for?</p>
+        <div style={{ display: 'flex', flexDirection: 'column', gap: 10 }}>
+          {LOCATIONS.map(loc => (
+            <button key={loc} onClick={() => onSelect(loc)} style={{
+              background: '#fff', border: '2px solid transparent', borderRadius: 16,
+              padding: '18px 20px', cursor: 'pointer', textAlign: 'left',
+              fontFamily: 'inherit', transition: 'all .2s', display: 'flex', alignItems: 'center', gap: 14,
+            }} onMouseOver={e => { e.currentTarget.style.borderColor = '#10B981'; e.currentTarget.style.transform = 'scale(1.02)'; }}
+               onMouseOut={e => { e.currentTarget.style.borderColor = 'transparent'; e.currentTarget.style.transform = 'scale(1)'; }}>
+              <div style={{ width: 48, height: 48, borderRadius: 14, background: loc === 'Nedlands' ? '#DBEAFE' : '#FEF3C7', display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: 24, flexShrink: 0 }}>
+                {loc === 'Nedlands' ? '🏖️' : '🏙️'}
+              </div>
+              <div>
+                <div style={{ fontWeight: 800, fontSize: 18, color: '#111' }}>{loc}</div>
+                <div style={{ fontSize: 12, color: '#6B7280', marginTop: 2 }}>
+                  {loc === 'Nedlands' ? 'Broadway, Nedlands WA' : 'Albany Hwy, Victoria Park WA'}
+                </div>
+              </div>
+              <span style={{ marginLeft: 'auto', color: '#10B981', fontSize: 20 }}>→</span>
+            </button>
+          ))}
+        </div>
+        <p style={{ color: 'rgba(255,255,255,.5)', fontSize: 11, marginTop: 16 }}>You can switch branches anytime from the header</p>
+      </div>
+    </div>
+  );
+}
+
 // ─── Login Screen ────────────────────────────────────────────────────────────
 function LoginScreen({ onLogin }) {
   return (
     <div style={{
-      minHeight: '100vh',
-      background: 'linear-gradient(145deg, #064E3B, #047857)',
+      minHeight: '100vh', background: 'linear-gradient(145deg, #064E3B, #047857)',
       display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center',
       fontFamily: "'Segoe UI', sans-serif", padding: 20,
     }}>
@@ -89,7 +194,6 @@ function LoginScreen({ onLogin }) {
         <div style={{ background: 'rgba(255,255,255,.12)', borderRadius: 8, padding: '5px 14px', display: 'inline-block', marginBottom: 24 }}>
           <span style={{ color: '#D1FAE5', fontSize: 12 }}>📍 Nedlands & Vic Park</span>
         </div>
-
         <div style={{ background: '#fff', borderRadius: 20, padding: '28px 24px', boxShadow: '0 24px 80px rgba(0,0,0,.25)' }}>
           <h2 style={{ fontSize: 17, fontWeight: 700, color: '#064E3B', margin: '0 0 2px' }}>Select Your Name</h2>
           <p style={{ fontSize: 12, color: '#6B7280', margin: '0 0 18px' }}>Your daily logs are linked to your account</p>
@@ -120,25 +224,30 @@ function LoginScreen({ onLogin }) {
 // ─── Main App ────────────────────────────────────────────────────────────────
 export default function App() {
   const [user, setUser] = useState(null);
+  const [branch, setBranch] = useState(null); // NEW: active branch
+  const [showBranchPicker, setShowBranchPicker] = useState(false);
   const [msgs, setMsgs] = useState([]);
   const [input, setInput] = useState('');
   const [stock, setStock] = useState({});
   const [logs, setLogs] = useState({});
   const [xfers, setXfers] = useState([]);
+  const [thresholds, setThresholds] = useState(DEFAULT_THRESHOLDS); // NEW: editable thresholds
   const [showTpl, setShowTpl] = useState(false);
   const [showLog, setShowLog] = useState(false);
+  const [showSettings, setShowSettings] = useState(false); // NEW: settings modal
   const [showQR, setShowQR] = useState(true);
   const endRef = useRef(null);
   const inRef = useRef(null);
 
-  // Load persisted data on mount
+  // Load persisted data
   useEffect(() => {
     const savedLogs = loadData('logs', {});
     const savedXfers = loadData('xfers', []);
+    const savedTh = loadData('thresholds', DEFAULT_THRESHOLDS);
     setLogs(savedLogs);
     setXfers(savedXfers);
+    setThresholds(savedTh);
 
-    // Rebuild latest stock snapshot from logs
     const sd = {};
     for (const d of Object.keys(savedLogs).sort().reverse()) {
       for (const log of savedLogs[d]) {
@@ -150,25 +259,28 @@ export default function App() {
     }
     if (Object.keys(sd).length) setStock(sd);
 
-    // Restore last user if they didn't log out
     const lastUser = loadData('lastUser', null);
+    const lastBranch = loadData('lastBranch', null);
     if (lastUser) setUser(lastUser);
+    if (lastBranch) setBranch(lastBranch);
   }, []);
 
   useEffect(() => { endRef.current?.scrollIntoView({ behavior: 'smooth' }); }, [msgs]);
 
   const send = useCallback((text) => {
-    if (!text.trim() || !user) return;
+    if (!text.trim() || !user || !branch) return;
+    // Inject the active branch into the message for detection if no location mentioned
+    const enriched = detectLocation(text) ? text : `${branch} ${text}`;
     const userMsg = { id: Date.now(), text: text.trim(), sender: 'user', time: timeNow(), type: 'user' };
-    const resp = generateResponse(text.trim(), stock, user, logs);
+    const resp = generateResponse(enriched, stock, user, logs, thresholds);
     const botMsg = { id: Date.now() + 1, text: resp.text, sender: 'bot', time: timeNow(), type: resp.type };
     setMsgs(prev => [...prev, userMsg, botMsg]);
     setInput('');
     setShowQR(false);
 
-    // Persist stock update
     if (resp.isStockUpdate && resp.stockPayload) {
-      const { section, location, items } = resp.stockPayload;
+      const { section, items } = resp.stockPayload;
+      const location = resp.stockPayload.location || branch;
       const entry = { staffId: user.id, staffName: user.name, section, location, items, time: timeNow(), timestamp: Date.now() };
       const today = dateKey();
       const newLogs = { ...logs, [today]: [...(logs[today] || []), entry] };
@@ -177,52 +289,55 @@ export default function App() {
       setStock(prev => ({ ...prev, [location]: { ...(prev[location] || {}), [section]: items } }));
     }
 
-    // Persist transfer
     if (resp.isTransfer && resp.transferData) {
       const t = { staffId: user.id, staffName: user.name, date: dateKey(), time: timeNow(), toLocation: resp.transferData.toLocation, items: resp.transferData.items, timestamp: Date.now() };
       const newXfers = [...xfers, t];
       setXfers(newXfers);
       saveData('xfers', newXfers);
     }
-  }, [user, stock, logs, xfers]);
+  }, [user, branch, stock, logs, xfers, thresholds]);
 
   const handleLogin = (staff) => {
     setUser(staff);
     saveData('lastUser', staff);
+    setShowBranchPicker(true);
+  };
+
+  const handleBranchSelect = (loc) => {
+    setBranch(loc);
+    saveData('lastBranch', loc);
+    setShowBranchPicker(false);
     const todayLogs = logs[dateKey()] || [];
     setMsgs([{
       id: 1,
-      text: `Welcome, *${staff.name}*! 👋\n\nYour sections: ${staff.sections.map(x => `📌 ${x}`).join(', ')}\n\n📅 *Today:* ${todayLogs.length} update(s) logged\n\n📋 Paste stock to log it\n📒 Tap *Log Book* for history\n⚠️ "Low stock" for alerts\n📦 "Orders" for schedule\n\n👇 Tap a quick reply to start!`,
+      text: `Welcome, *${user.name}*! 👋\n\n📍 Branch: *${loc}*\nYour sections: ${user.sections.map(x => `📌 ${x}`).join(', ')}\n\n📅 *Today:* ${todayLogs.length} update(s) logged\n\n📋 Paste stock to log it\n📒 Tap *Log Book* for history\n⚙️ Tap *Settings* to adjust thresholds\n\nAll logs will be tagged to *${loc}*.\n👇 Tap a quick reply to start!`,
       sender: 'bot', time: timeNow(), type: 'assistant',
     }]);
   };
 
   const handleLogout = () => {
     setUser(null);
+    setBranch(null);
     setMsgs([]);
     saveData('lastUser', null);
+    saveData('lastBranch', null);
   };
 
-  // ─── Loading ─────────────────────────────────────────────────────────────
-  // No async loading needed with localStorage — it's synchronous
+  const handleSaveThresholds = (newTh) => {
+    setThresholds(newTh);
+    saveData('thresholds', newTh);
+  };
 
-  // ─── Login Screen ────────────────────────────────────────────────────────
-  if (!user) return (
-    <>
-      <style>{GLOBAL_CSS}</style>
-      <LoginScreen onLogin={handleLogin} />
-    </>
-  );
+  // Login
+  if (!user) return (<><style>{GLOBAL_CSS}</style><LoginScreen onLogin={handleLogin} /></>);
 
-  // ─── Log Book ────────────────────────────────────────────────────────────
-  if (showLog) return (
-    <>
-      <style>{GLOBAL_CSS}</style>
-      <LogBook logs={logs} transfers={xfers} onClose={() => setShowLog(false)} currentUser={user} />
-    </>
-  );
+  // Branch picker
+  if (showBranchPicker || !branch) return (<><style>{GLOBAL_CSS}</style><BranchSelector onSelect={handleBranchSelect} userName={user.name} /></>);
 
-  // ─── Chat Interface ──────────────────────────────────────────────────────
+  // Log Book
+  if (showLog) return (<><style>{GLOBAL_CSS}</style><LogBook logs={logs} transfers={xfers} onClose={() => setShowLog(false)} currentUser={user} thresholds={thresholds} /></>);
+
+  // Chat
   return (
     <div style={{ height: '100vh', display: 'flex', flexDirection: 'column', fontFamily: "'Segoe UI', sans-serif", background: '#ECE5DD' }}>
       <style>{GLOBAL_CSS}</style>
@@ -234,16 +349,28 @@ export default function App() {
           <div style={{ width: 40, height: 40, borderRadius: '50%', background: '#10B981', display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: 20, flexShrink: 0 }}>🍛</div>
           <div style={{ flex: 1, minWidth: 0 }}>
             <div style={{ fontWeight: 800, fontSize: 16, lineHeight: 1.2 }}>SnS Stock Agent</div>
-            <div style={{ fontSize: 11, opacity: 0.8, whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }}>
-              {user.avatar} {user.name} · {(logs[dateKey()] || []).length} logs today
+            <div style={{ fontSize: 11, opacity: 0.8, display: 'flex', alignItems: 'center', gap: 4 }}>
+              {user.avatar} {user.name}
+              <span style={{ margin: '0 2px' }}>·</span>
+              {/* Tappable branch badge */}
+              <button onClick={() => setShowBranchPicker(true)} style={{
+                background: 'rgba(255,255,255,.2)', border: 'none', color: '#fff',
+                borderRadius: 6, padding: '1px 7px', cursor: 'pointer', fontSize: 11, fontWeight: 700,
+                fontFamily: 'inherit', display: 'inline-flex', alignItems: 'center', gap: 3,
+              }}>
+                📍{branch} ▾
+              </button>
+              <span style={{ margin: '0 2px' }}>·</span>
+              {(logs[dateKey()] || []).length} logs
             </div>
           </div>
+          <button onClick={() => setShowSettings(true)} style={{ background: 'none', border: 'none', color: '#fff', fontSize: 18, cursor: 'pointer', padding: '4px' }} title="Settings">⚙️</button>
           <button onClick={() => setShowLog(true)} style={{
             background: 'rgba(255,255,255,.15)', border: 'none', color: '#fff',
-            borderRadius: 10, padding: '7px 12px', cursor: 'pointer', fontSize: 12, fontWeight: 700,
+            borderRadius: 10, padding: '7px 10px', cursor: 'pointer', fontSize: 12, fontWeight: 700,
             display: 'flex', alignItems: 'center', gap: 4,
           }}>
-            📒 Log Book
+            📒
             {(logs[dateKey()] || []).length > 0 && (
               <span style={{ background: '#10B981', borderRadius: 10, padding: '1px 6px', fontSize: 10, fontWeight: 800 }}>
                 {(logs[dateKey()] || []).length}
@@ -261,7 +388,6 @@ export default function App() {
           </span>
         </div>
         {msgs.map(m => <Bubble key={m.id} message={m} />)}
-
         {showQR && msgs.length <= 2 && (
           <div style={{ padding: '10px 14px', display: 'flex', flexWrap: 'wrap', gap: 6, justifyContent: 'center', animation: 'slideIn .4s ease' }}>
             {QUICK_REPLIES.map(q => (
@@ -283,41 +409,24 @@ export default function App() {
       <div style={{ background: '#F0F2F5', padding: '8px 10px', display: 'flex', alignItems: 'flex-end', gap: 8, flexShrink: 0, borderTop: '1px solid #E5E7EB' }}>
         <button onClick={() => setShowTpl(true)} style={{ background: 'none', border: 'none', fontSize: 22, cursor: 'pointer', color: '#064E3B', padding: '6px 2px', flexShrink: 0, lineHeight: 1 }}>📋</button>
         <div style={{ flex: 1, background: '#fff', borderRadius: 20, padding: '0 14px', display: 'flex', alignItems: 'flex-end', border: '1px solid #E5E7EB' }}>
-          <textarea
-            ref={inRef}
-            value={input}
-            onChange={e => setInput(e.target.value)}
+          <textarea ref={inRef} value={input} onChange={e => setInput(e.target.value)}
             onKeyDown={e => { if (e.key === 'Enter' && !e.shiftKey) { e.preventDefault(); send(input); } }}
-            placeholder="Paste stock list or ask a question..."
-            rows={1}
-            style={{
-              flex: 1, border: 'none', resize: 'none', fontSize: 14,
-              padding: '10px 0', lineHeight: 1.4, maxHeight: 120,
-              fontFamily: 'inherit', background: 'transparent', color: '#111',
+            placeholder={`Paste stock for ${branch}...`} rows={1}
+            style={{ flex: 1, border: 'none', resize: 'none', fontSize: 14, padding: '10px 0', lineHeight: 1.4, maxHeight: 120, fontFamily: 'inherit', background: 'transparent', color: '#111',
               overflowY: input.split('\n').length > 4 ? 'auto' : 'hidden',
-              height: Math.min(120, Math.max(38, input.split('\n').length * 22)),
-            }}
-          />
+              height: Math.min(120, Math.max(38, input.split('\n').length * 22)) }} />
         </div>
         <button onClick={() => send(input)} style={{
-          background: input.trim() ? '#10B981' : '#CCC',
-          border: 'none', borderRadius: '50%', width: 42, height: 42,
+          background: input.trim() ? '#10B981' : '#CCC', border: 'none', borderRadius: '50%', width: 42, height: 42,
           display: 'flex', alignItems: 'center', justifyContent: 'center',
-          cursor: input.trim() ? 'pointer' : 'default', flexShrink: 0,
-          fontSize: 18, color: '#fff',
+          cursor: input.trim() ? 'pointer' : 'default', flexShrink: 0, fontSize: 18, color: '#fff',
           boxShadow: input.trim() ? '0 2px 8px rgba(16,185,129,.3)' : 'none',
         }}>➤</button>
       </div>
 
-      <TemplateModal
-        open={showTpl}
-        onClose={() => setShowTpl(false)}
-        onSelect={(name, sec) => {
-          setInput(`${name} update:\n` + sec.items.map(i => `${i}: `).join('\n'));
-          setShowTpl(false);
-          setTimeout(() => inRef.current?.focus(), 100);
-        }}
-      />
+      <TemplateModal open={showTpl} onClose={() => setShowTpl(false)} activeBranch={branch}
+        onSelect={(name, sec) => { setInput(`${name} update:\n` + sec.items.map(i => `${i}: `).join('\n')); setShowTpl(false); setTimeout(() => inRef.current?.focus(), 100); }} />
+      <ThresholdSettings open={showSettings} onClose={() => setShowSettings(false)} thresholds={thresholds} onSave={handleSaveThresholds} />
     </div>
   );
 }
