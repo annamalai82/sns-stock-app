@@ -2,10 +2,11 @@
 // Features: Branch selector, threshold settings, log book, chat
 
 import React, { useState, useEffect, useRef, useCallback } from 'react';
-import { STAFF, SECTIONS, LOCATIONS, QUICK_REPLIES, DEFAULT_THRESHOLDS, dateKey, timeNow } from './config';
+import { DEFAULT_STAFF, DEFAULT_SECTIONS, DEFAULT_LOCATIONS, QUICK_REPLIES, DEFAULT_THRESHOLDS, dateKey, timeNow } from './config';
 import { loadData, saveData, onDataChange } from './storage';
 import { generateResponse, parseStock, detectSection, detectLocation } from './engine';
 import LogBook from './LogBook';
+import ManageScreen from './ManageScreen';
 
 const GLOBAL_CSS = `
   * { box-sizing: border-box; }
@@ -37,7 +38,7 @@ function Bubble({ message }) {
 }
 
 // ─── Template Modal ──────────────────────────────────────────────────────────
-function TemplateModal({ open, onClose, onSelect, activeBranch }) {
+function TemplateModal({ open, onClose, onSelect, activeBranch, sections }) {
   if (!open) return null;
   return (
     <div style={{ position: 'fixed', inset: 0, background: 'rgba(0,0,0,.5)', zIndex: 100, display: 'flex', alignItems: 'flex-end', justifyContent: 'center' }} onClick={onClose}>
@@ -48,7 +49,7 @@ function TemplateModal({ open, onClose, onSelect, activeBranch }) {
         </div>
         <p style={{ fontSize: 12, color: '#6B7280', margin: '0 0 12px' }}>Logging to: <strong>📍 {activeBranch}</strong>. Tap section → fill quantities → send!</p>
         <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 8 }}>
-          {Object.entries(SECTIONS).map(([name, sec]) => (
+          {Object.entries(sections).map(([name, sec]) => (
             <button key={name} onClick={() => onSelect(name, sec)} style={{
               background: '#F0FDF4', border: '1px solid #E5E7EB', borderRadius: 12,
               padding: '12px 10px', cursor: 'pointer', textAlign: 'left', fontFamily: 'inherit', transition: 'all .15s',
@@ -66,7 +67,7 @@ function TemplateModal({ open, onClose, onSelect, activeBranch }) {
 }
 
 // ─── Threshold Settings Modal ────────────────────────────────────────────────
-function ThresholdSettings({ open, onClose, thresholds, onSave }) {
+function ThresholdSettings({ open, onClose, thresholds, onSave, sections }) {
   const [editSec, setEditSec] = useState(null);
   const [local, setLocal] = useState({});
 
@@ -100,7 +101,7 @@ function ThresholdSettings({ open, onClose, thresholds, onSave }) {
 
         {/* Section tabs */}
         <div style={{ display: 'flex', gap: 4, overflowX: 'auto', padding: '10px 20px 0', flexShrink: 0 }}>
-          {Object.entries(SECTIONS).map(([k, v]) => (
+          {Object.entries(sections).map(([k, v]) => (
             <button key={k} onClick={() => setEditSec(k)} style={{
               flexShrink: 0, padding: '5px 10px', borderRadius: 8, fontSize: 11, fontWeight: 600, cursor: 'pointer', fontFamily: 'inherit',
               border: editSec === k ? '2px solid #10B981' : '1px solid #E5E7EB',
@@ -112,9 +113,9 @@ function ThresholdSettings({ open, onClose, thresholds, onSave }) {
         {/* Items for selected section */}
         <div style={{ flex: 1, overflowY: 'auto', padding: '10px 20px' }}>
           {!editSec && <div style={{ textAlign: 'center', padding: '32px 0', color: '#9CA3AF', fontSize: 13 }}>👆 Select a section above to edit item thresholds</div>}
-          {editSec && SECTIONS[editSec] && (
+          {editSec && sections[editSec] && (
             <div style={{ display: 'flex', flexDirection: 'column', gap: 4 }}>
-              {SECTIONS[editSec].items.map(item => (
+              {sections[editSec].items.map(item => (
                 <div key={item} style={{ display: 'flex', alignItems: 'center', gap: 8, padding: '6px 0', borderBottom: '1px solid #F3F4F6' }}>
                   <span style={{ flex: 1, fontSize: 13, color: '#374151' }}>{item}</span>
                   <input type="number" min={0}
@@ -141,7 +142,7 @@ function ThresholdSettings({ open, onClose, thresholds, onSave }) {
 }
 
 // ─── Branch Selector (shown after login) ─────────────────────────────────────
-function BranchSelector({ onSelect, userName }) {
+function BranchSelector({ onSelect, userName, locations }) {
   return (
     <div style={{
       position: 'fixed', inset: 0, background: 'linear-gradient(145deg, #064E3B, #047857)',
@@ -153,20 +154,19 @@ function BranchSelector({ onSelect, userName }) {
         <h2 style={{ color: '#fff', fontSize: 22, fontWeight: 800, margin: '0 0 4px' }}>Select Branch</h2>
         <p style={{ color: '#A7F3D0', fontSize: 13, margin: '0 0 24px' }}>Hi {userName}! Which location are you logging stock for?</p>
         <div style={{ display: 'flex', flexDirection: 'column', gap: 10 }}>
-          {LOCATIONS.map(loc => (
+          {locations.map((loc, i) => (
             <button key={loc} onClick={() => onSelect(loc)} style={{
               background: '#fff', border: '2px solid transparent', borderRadius: 16,
               padding: '18px 20px', cursor: 'pointer', textAlign: 'left',
               fontFamily: 'inherit', transition: 'all .2s', display: 'flex', alignItems: 'center', gap: 14,
             }} onMouseOver={e => { e.currentTarget.style.borderColor = '#10B981'; e.currentTarget.style.transform = 'scale(1.02)'; }}
                onMouseOut={e => { e.currentTarget.style.borderColor = 'transparent'; e.currentTarget.style.transform = 'scale(1)'; }}>
-              <div style={{ width: 48, height: 48, borderRadius: 14, background: loc === 'Nedlands' ? '#DBEAFE' : '#FEF3C7', display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: 24, flexShrink: 0 }}>
-                {loc === 'Nedlands' ? '🏖️' : '🏙️'}
+              <div style={{ width: 48, height: 48, borderRadius: 14, background: i % 2 === 0 ? '#DBEAFE' : '#FEF3C7', display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: 24, flexShrink: 0 }}>
+                {'📍'}
               </div>
               <div>
                 <div style={{ fontWeight: 800, fontSize: 18, color: '#111' }}>{loc}</div>
                 <div style={{ fontSize: 12, color: '#6B7280', marginTop: 2 }}>
-                  {loc === 'Nedlands' ? 'Broadway, Nedlands WA' : 'Albany Hwy, Victoria Park WA'}
                 </div>
               </div>
               <span style={{ marginLeft: 'auto', color: '#10B981', fontSize: 20 }}>→</span>
@@ -180,7 +180,7 @@ function BranchSelector({ onSelect, userName }) {
 }
 
 // ─── Login Screen ────────────────────────────────────────────────────────────
-function LoginScreen({ onLogin }) {
+function LoginScreen({ onLogin, staffList }) {
   return (
     <div style={{
       minHeight: '100vh', background: 'linear-gradient(145deg, #064E3B, #047857)',
@@ -192,13 +192,13 @@ function LoginScreen({ onLogin }) {
         <h1 style={{ color: '#fff', fontSize: 28, fontWeight: 800, letterSpacing: -0.7, margin: 0 }}>Sizzle n Sambar</h1>
         <p style={{ color: '#A7F3D0', fontSize: 13, margin: '2px 0 6px' }}>Daily Stock Tracker</p>
         <div style={{ background: 'rgba(255,255,255,.12)', borderRadius: 8, padding: '5px 14px', display: 'inline-block', marginBottom: 24 }}>
-          <span style={{ color: '#D1FAE5', fontSize: 12 }}>📍 Nedlands & Vic Park</span>
+          <span style={{ color: '#D1FAE5', fontSize: 12 }}>📍 Sizzle n Sambar</span>
         </div>
         <div style={{ background: '#fff', borderRadius: 20, padding: '28px 24px', boxShadow: '0 24px 80px rgba(0,0,0,.25)' }}>
           <h2 style={{ fontSize: 17, fontWeight: 700, color: '#064E3B', margin: '0 0 2px' }}>Select Your Name</h2>
           <p style={{ fontSize: 12, color: '#6B7280', margin: '0 0 18px' }}>Your daily logs are linked to your account</p>
           <div style={{ display: 'flex', flexDirection: 'column', gap: 6 }}>
-            {STAFF.map((s, i) => (
+            {staffList.map((s, i) => (
               <button key={s.id} onClick={() => onLogin(s)} style={{
                 display: 'flex', alignItems: 'center', gap: 12, background: '#F0FDF4',
                 border: '2px solid transparent', borderRadius: 14, padding: '12px 16px',
@@ -224,39 +224,35 @@ function LoginScreen({ onLogin }) {
 // ─── Main App ────────────────────────────────────────────────────────────────
 export default function App() {
   const [user, setUser] = useState(null);
-  const [branch, setBranch] = useState(null); // NEW: active branch
+  const [branch, setBranch] = useState(null);
   const [showBranchPicker, setShowBranchPicker] = useState(false);
   const [msgs, setMsgs] = useState([]);
   const [input, setInput] = useState('');
   const [stock, setStock] = useState({});
   const [logs, setLogs] = useState({});
   const [xfers, setXfers] = useState([]);
-  const [thresholds, setThresholds] = useState(DEFAULT_THRESHOLDS); // NEW: editable thresholds
+  const [thresholds, setThresholds] = useState(DEFAULT_THRESHOLDS);
   const [showTpl, setShowTpl] = useState(false);
   const [showLog, setShowLog] = useState(false);
-  const [showSettings, setShowSettings] = useState(false); // NEW: settings modal
+  const [showSettings, setShowSettings] = useState(false);
+  const [showManage, setShowManage] = useState(false);
   const [showQR, setShowQR] = useState(true);
+
+  // Dynamic config — loaded from Firebase, falls back to defaults
+  const [dynStaff, setDynStaff] = useState(DEFAULT_STAFF);
+  const [dynSections, setDynSections] = useState(DEFAULT_SECTIONS);
+  const [dynLocations, setDynLocations] = useState(DEFAULT_LOCATIONS);
+
   const endRef = useRef(null);
   const inRef = useRef(null);
 
   // Load persisted data + subscribe to real-time updates from Firebase
   useEffect(() => {
     let mounted = true;
-
-    // Initial load (async for Firebase)
-    (async () => {
-      const savedLogs = await loadData('logs', {});
-      const savedXfers = await loadData('xfers', []);
-      const savedTh = await loadData('thresholds', DEFAULT_THRESHOLDS);
-      if (!mounted) return;
-      setLogs(savedLogs);
-      setXfers(savedXfers);
-      setThresholds(savedTh);
-
-      // Rebuild stock snapshot
+    const rebuildStock = (logsObj) => {
       const sd = {};
-      for (const d of Object.keys(savedLogs).sort().reverse()) {
-        for (const log of savedLogs[d]) {
+      for (const d of Object.keys(logsObj).sort().reverse()) {
+        for (const log of logsObj[d]) {
           const loc = log.location || 'Vic Park';
           const sec = log.section || 'General';
           if (!sd[loc]) sd[loc] = {};
@@ -264,40 +260,31 @@ export default function App() {
         }
       }
       if (Object.keys(sd).length) setStock(sd);
+    };
 
-      // Restore device-specific user/branch
+    (async () => {
+      const [sL, sX, sT, sSt, sSe, sLo] = await Promise.all([
+        loadData('logs', {}), loadData('xfers', []), loadData('thresholds', DEFAULT_THRESHOLDS),
+        loadData('staff', DEFAULT_STAFF), loadData('sections', DEFAULT_SECTIONS), loadData('locations', DEFAULT_LOCATIONS),
+      ]);
+      if (!mounted) return;
+      setLogs(sL); setXfers(sX); setThresholds(sT);
+      setDynStaff(sSt); setDynSections(sSe); setDynLocations(sLo);
+      rebuildStock(sL);
       const lastUser = await loadData('lastUser', null);
       const lastBranch = await loadData('lastBranch', null);
       if (mounted && lastUser) setUser(lastUser);
       if (mounted && lastBranch) setBranch(lastBranch);
     })();
 
-    // Real-time listeners — when another device saves, we get updated instantly
-    const unsub1 = onDataChange('logs', (newLogs) => {
-      if (!mounted) return;
-      setLogs(newLogs);
-      // Rebuild stock from fresh logs
-      const sd = {};
-      for (const d of Object.keys(newLogs).sort().reverse()) {
-        for (const log of newLogs[d]) {
-          const loc = log.location || 'Vic Park';
-          const sec = log.section || 'General';
-          if (!sd[loc]) sd[loc] = {};
-          if (!sd[loc][sec]) sd[loc][sec] = log.items || [];
-        }
-      }
-      if (Object.keys(sd).length) setStock(sd);
-    });
+    const unsub1 = onDataChange('logs', (v) => { if (mounted) { setLogs(v); rebuildStock(v); } });
+    const unsub2 = onDataChange('xfers', (v) => { if (mounted) setXfers(v); });
+    const unsub3 = onDataChange('thresholds', (v) => { if (mounted) setThresholds(v); });
+    const unsub4 = onDataChange('staff', (v) => { if (mounted) setDynStaff(v); });
+    const unsub5 = onDataChange('sections', (v) => { if (mounted) setDynSections(v); });
+    const unsub6 = onDataChange('locations', (v) => { if (mounted) setDynLocations(v); });
 
-    const unsub2 = onDataChange('xfers', (newXfers) => {
-      if (mounted) setXfers(newXfers);
-    });
-
-    const unsub3 = onDataChange('thresholds', (newTh) => {
-      if (mounted) setThresholds(newTh);
-    });
-
-    return () => { mounted = false; unsub1(); unsub2(); unsub3(); };
+    return () => { mounted = false; unsub1(); unsub2(); unsub3(); unsub4(); unsub5(); unsub6(); };
   }, []);
 
   useEffect(() => { endRef.current?.scrollIntoView({ behavior: 'smooth' }); }, [msgs]);
@@ -363,14 +350,23 @@ export default function App() {
     saveData('thresholds', newTh);
   };
 
+  const handleManageSave = ({ locations, sections, staff }) => {
+    setDynLocations(locations); saveData('locations', locations);
+    setDynSections(sections); saveData('sections', sections);
+    setDynStaff(staff); saveData('staff', staff);
+  };
+
   // Login
-  if (!user) return (<><style>{GLOBAL_CSS}</style><LoginScreen onLogin={handleLogin} /></>);
+  if (!user) return (<><style>{GLOBAL_CSS}</style><LoginScreen onLogin={handleLogin} staffList={dynStaff} /></>);
 
   // Branch picker
-  if (showBranchPicker || !branch) return (<><style>{GLOBAL_CSS}</style><BranchSelector onSelect={handleBranchSelect} userName={user.name} /></>);
+  if (showBranchPicker || !branch) return (<><style>{GLOBAL_CSS}</style><BranchSelector onSelect={handleBranchSelect} userName={user.name} locations={dynLocations} /></>);
 
   // Log Book
-  if (showLog) return (<><style>{GLOBAL_CSS}</style><LogBook logs={logs} transfers={xfers} onClose={() => setShowLog(false)} currentUser={user} thresholds={thresholds} /></>);
+  if (showManage) return (<><style>{GLOBAL_CSS}</style><ManageScreen locations={dynLocations} sections={dynSections} staff={dynStaff} onSave={handleManageSave} onClose={() => setShowManage(false)} /></>);
+
+  // Log Book
+  if (showLog) return (<><style>{GLOBAL_CSS}</style><LogBook logs={logs} transfers={xfers} onClose={() => setShowLog(false)} currentUser={user} thresholds={thresholds} sections={dynSections} staff={dynStaff} locations={dynLocations} /></>);
 
   // Chat
   return (
@@ -399,6 +395,7 @@ export default function App() {
               {(logs[dateKey()] || []).length} logs
             </div>
           </div>
+          <button onClick={() => setShowManage(true)} style={{ background: 'none', border: 'none', color: '#fff', fontSize: 18, cursor: 'pointer', padding: '4px' }} title="Manage">🛠️</button>
           <button onClick={() => setShowSettings(true)} style={{ background: 'none', border: 'none', color: '#fff', fontSize: 18, cursor: 'pointer', padding: '4px' }} title="Settings">⚙️</button>
           <button onClick={() => setShowLog(true)} style={{
             background: 'rgba(255,255,255,.15)', border: 'none', color: '#fff',
@@ -459,9 +456,9 @@ export default function App() {
         }}>➤</button>
       </div>
 
-      <TemplateModal open={showTpl} onClose={() => setShowTpl(false)} activeBranch={branch}
+      <TemplateModal open={showTpl} onClose={() => setShowTpl(false)} activeBranch={branch} sections={dynSections}
         onSelect={(name, sec) => { setInput(`${name} update:\n` + sec.items.map(i => `${i}: `).join('\n')); setShowTpl(false); setTimeout(() => inRef.current?.focus(), 100); }} />
-      <ThresholdSettings open={showSettings} onClose={() => setShowSettings(false)} thresholds={thresholds} onSave={handleSaveThresholds} />
+      <ThresholdSettings open={showSettings} onClose={() => setShowSettings(false)} thresholds={thresholds} onSave={handleSaveThresholds} sections={dynSections} />
     </div>
   );
 }

@@ -1,6 +1,9 @@
 // config.js — All restaurant data, sections, thresholds, staff
 
-export const STAFF = [
+// These are the INITIAL defaults. At runtime, the app loads overrides from Firebase/localStorage.
+// To edit these dynamically, use the 🛠️ Manage screen in the app.
+
+export const DEFAULT_STAFF = [
   { id: 'sapna', name: 'Sapna', avatar: '👩‍🍳', sections: ['Dry Store', 'KOT Fridge & Freezer'] },
   { id: 'simran', name: 'Simran', avatar: '👩‍🍳', sections: ['Vegetables', 'Dough', 'Marination', 'Front Fridge', 'Dairy', 'Drinks'] },
   { id: 'charles', name: 'Charles', avatar: '👨‍🍳', sections: ['Cold Room', 'Meat Stock', 'Seafood'] },
@@ -10,9 +13,9 @@ export const STAFF = [
   { id: 'shushi', name: 'Shushi/Rushda', avatar: '👨‍🍳', sections: ['Ordering', 'Final Stock Check', 'Overall Management'] },
 ];
 
-export const LOCATIONS = ['Nedlands', 'Vic Park'];
+export const DEFAULT_LOCATIONS = ['Nedlands', 'Vic Park'];
 
-export const SECTIONS = {
+export const DEFAULT_SECTIONS = {
   'KOT Section': {
     items: ['Sambar','Tamarind','Veg Korma','Combo Curry','Coconut Chutney','Red Chutney','Idli','Mini Idli','Thattu Idli','Kuzhi Paniyaram','Big Vada','Small Vada','Raita','Mint Chutney','Samosa','Chicken Biryani','Goat Biryani','Dum Chicken','Donne Mutton','Beef Biryani','Veg Biryani','Plain Rice','Sappadu Rice','Idiyappam','Prawns','Lamb Sheek','Madras Chicken'],
     icon: '🍛'
@@ -48,6 +51,11 @@ export const SECTIONS = {
     icon: '🥩'
   },
 };
+
+// Also keep STAFF, SECTIONS, LOCATIONS as aliases for backward compat in engine.js
+export const STAFF = DEFAULT_STAFF;
+export const SECTIONS = DEFAULT_SECTIONS;
+export const LOCATIONS = DEFAULT_LOCATIONS;
 
 export const ORDERING_SCHEDULE = [
   { supplier: 'Amith', day: 'Sunday', note: 'Missing items informed by Friday' },

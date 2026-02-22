@@ -2,7 +2,7 @@
 // Features: Calendar date picker, dedicated OOS section, custom thresholds
 
 import React, { useState } from 'react';
-import { STAFF, SECTIONS, LOCATIONS, DEFAULT_THRESHOLDS, dateKey } from './config';
+import { DEFAULT_STAFF, DEFAULT_SECTIONS, DEFAULT_LOCATIONS, DEFAULT_THRESHOLDS, dateKey } from './config';
 import { checkLowStock } from './engine';
 
 function Dot({ severity }) {
@@ -10,8 +10,11 @@ function Dot({ severity }) {
   return <span style={{ display: 'inline-block', width: 8, height: 8, borderRadius: '50%', background: c, marginRight: 5, flexShrink: 0 }} />;
 }
 
-export default function LogBook({ logs, transfers, onClose, currentUser, thresholds }) {
+export default function LogBook({ logs, transfers, onClose, currentUser, thresholds, sections: propSections, staff: propStaff, locations: propLocations }) {
   const th = thresholds || DEFAULT_THRESHOLDS;
+  const STAFF = propStaff || DEFAULT_STAFF;
+  const SECTIONS = propSections || DEFAULT_SECTIONS;
+  const LOCATIONS = propLocations || DEFAULT_LOCATIONS;
   const [vDate, setVDate] = useState(dateKey());
   const [vSec, setVSec] = useState('all');
   const [vLoc, setVLoc] = useState('all');
