@@ -74,7 +74,7 @@ export default function LogBook({ logs, transfers, onClose, currentUser, thresho
   const DatePickerModal = () => {
     if (!showDatePicker) return null;
     return (
-      <div style={{ position: 'fixed', inset: 0, background: 'rgba(0,0,0,.5)', zIndex: 250, display: 'flex', alignItems: 'center', justifyContent: 'center', padding: 20 }}
+      <div style={{ position: 'fixed', top: 0, left: 0, right: 0, bottom: 0, background: 'rgba(0,0,0,.5)', zIndex: 250, display: 'flex', alignItems: 'center', justifyContent: 'center', padding: 20 }}
         onClick={() => setShowDatePicker(false)}>
         <div style={{ background: '#fff', borderRadius: 16, padding: 20, maxWidth: 320, width: '100%' }} onClick={e => e.stopPropagation()}>
           <h3 style={{ margin: '0 0 12px', fontSize: 16, fontWeight: 700, color: '#064E3B' }}>📅 Go to Date</h3>
@@ -90,7 +90,7 @@ export default function LogBook({ logs, transfers, onClose, currentUser, thresho
   };
 
   return (
-    <div style={{ position: 'fixed', inset: 0, background: '#F9FAFB', zIndex: 200, display: 'flex', flexDirection: 'column', fontFamily: "'Segoe UI', sans-serif" }}>
+    <div style={{ position: 'fixed', top: 0, left: 0, right: 0, bottom: 0, background: '#F9FAFB', zIndex: 200, display: 'flex', flexDirection: 'column', fontFamily: "'Segoe UI', sans-serif" }}>
       {/* Header */}
       <div style={{ background: '#064E3B', color: '#fff', padding: '12px 16px', flexShrink: 0 }}>
         <div style={{ display: 'flex', alignItems: 'center', gap: 10, marginBottom: 10 }}>

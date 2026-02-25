@@ -41,7 +41,7 @@ function Bubble({ message }) {
 function TemplateModal({ open, onClose, onSelect, activeBranch, sections }) {
   if (!open) return null;
   return (
-    <div style={{ position: 'fixed', inset: 0, background: 'rgba(0,0,0,.5)', zIndex: 100, display: 'flex', alignItems: 'flex-end', justifyContent: 'center' }} onClick={onClose}>
+    <div style={{ position: 'fixed', top: 0, left: 0, right: 0, bottom: 0, background: 'rgba(0,0,0,.5)', zIndex: 100, display: 'flex', alignItems: 'flex-end', justifyContent: 'center' }} onClick={onClose}>
       <div style={{ background: '#fff', borderRadius: '18px 18px 0 0', padding: 20, width: '100%', maxWidth: 500, maxHeight: '70vh', overflowY: 'auto', animation: 'slideUp .3s ease' }} onClick={e => e.stopPropagation()}>
         <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 14 }}>
           <h3 style={{ margin: 0, fontSize: 16, fontWeight: 700, color: '#064E3B' }}>📋 Stock Templates</h3>
@@ -80,7 +80,7 @@ function ThresholdSettings({ open, onClose, thresholds, onSave, sections }) {
   };
 
   return (
-    <div style={{ position: 'fixed', inset: 0, background: 'rgba(0,0,0,.5)', zIndex: 150, display: 'flex', alignItems: 'center', justifyContent: 'center', padding: 16 }} onClick={onClose}>
+    <div style={{ position: 'fixed', top: 0, left: 0, right: 0, bottom: 0, background: 'rgba(0,0,0,.5)', zIndex: 150, display: 'flex', alignItems: 'center', justifyContent: 'center', padding: 16 }} onClick={onClose}>
       <div style={{ background: '#fff', borderRadius: 20, width: '100%', maxWidth: 480, maxHeight: '85vh', display: 'flex', flexDirection: 'column', animation: 'fadeIn .25s ease', overflow: 'hidden' }} onClick={e => e.stopPropagation()}>
         {/* Header */}
         <div style={{ padding: '16px 20px', borderBottom: '1px solid #E5E7EB', flexShrink: 0 }}>
@@ -145,35 +145,35 @@ function ThresholdSettings({ open, onClose, thresholds, onSave, sections }) {
 function BranchSelector({ onSelect, userName, locations }) {
   return (
     <div style={{
-      position: 'fixed', inset: 0, background: 'linear-gradient(145deg, #064E3B, #047857)',
-      display: 'flex', alignItems: 'center', justifyContent: 'center',
-      fontFamily: "'Segoe UI', sans-serif", padding: 20, zIndex: 300,
+      position: 'fixed', top: 0, left: 0, right: 0, bottom: 0, background: 'linear-gradient(145deg, #064E3B, #047857)',
+      display: 'flex', flexDirection: 'column',
+      fontFamily: "'Segoe UI', sans-serif", zIndex: 300,
     }}>
-      <div style={{ textAlign: 'center', maxWidth: 360, width: '100%', animation: 'fadeIn .4s ease' }}>
-        <div style={{ fontSize: 44, marginBottom: 8 }}>📍</div>
-        <h2 style={{ color: '#fff', fontSize: 22, fontWeight: 800, margin: '0 0 4px' }}>Select Branch</h2>
-        <p style={{ color: '#A7F3D0', fontSize: 13, margin: '0 0 24px' }}>Hi {userName}! Which location are you logging stock for?</p>
-        <div style={{ display: 'flex', flexDirection: 'column', gap: 10 }}>
+      <div style={{ textAlign: 'center', padding: '28px 20px 16px', flexShrink: 0 }}>
+        <div style={{ fontSize: 36, marginBottom: 4 }}>📍</div>
+        <h2 style={{ color: '#fff', fontSize: 20, fontWeight: 800, margin: '0 0 4px' }}>Select Branch</h2>
+        <p style={{ color: '#A7F3D0', fontSize: 12, margin: 0 }}>Hi {userName}! Which location are you logging stock for?</p>
+      </div>
+      <div style={{ flex: 1, overflowY: 'auto', WebkitOverflowScrolling: 'touch', padding: '0 20px 24px' }}>
+        <div style={{ maxWidth: 380, margin: '0 auto', display: 'flex', flexDirection: 'column', gap: 10 }}>
           {locations.map((loc, i) => (
             <button key={loc} onClick={() => onSelect(loc)} style={{
               background: '#fff', border: '2px solid transparent', borderRadius: 16,
-              padding: '18px 20px', cursor: 'pointer', textAlign: 'left',
-              fontFamily: 'inherit', transition: 'all .2s', display: 'flex', alignItems: 'center', gap: 14,
-            }} onMouseOver={e => { e.currentTarget.style.borderColor = '#10B981'; e.currentTarget.style.transform = 'scale(1.02)'; }}
-               onMouseOut={e => { e.currentTarget.style.borderColor = 'transparent'; e.currentTarget.style.transform = 'scale(1)'; }}>
-              <div style={{ width: 48, height: 48, borderRadius: 14, background: i % 2 === 0 ? '#DBEAFE' : '#FEF3C7', display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: 24, flexShrink: 0 }}>
-                {'📍'}
+              padding: '16px 18px', cursor: 'pointer', textAlign: 'left',
+              fontFamily: 'inherit', transition: 'all .15s', display: 'flex', alignItems: 'center', gap: 14,
+            }} onMouseOver={e => { e.currentTarget.style.borderColor = '#10B981'; }}
+               onMouseOut={e => { e.currentTarget.style.borderColor = 'transparent'; }}>
+              <div style={{ width: 44, height: 44, borderRadius: 12, background: i % 2 === 0 ? '#DBEAFE' : '#FEF3C7', display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: 22, flexShrink: 0 }}>
+                📍
               </div>
-              <div>
-                <div style={{ fontWeight: 800, fontSize: 18, color: '#111' }}>{loc}</div>
-                <div style={{ fontSize: 12, color: '#6B7280', marginTop: 2 }}>
-                </div>
+              <div style={{ flex: 1 }}>
+                <div style={{ fontWeight: 800, fontSize: 17, color: '#111' }}>{loc}</div>
               </div>
-              <span style={{ marginLeft: 'auto', color: '#10B981', fontSize: 20 }}>→</span>
+              <span style={{ color: '#10B981', fontSize: 18, flexShrink: 0 }}>→</span>
             </button>
           ))}
         </div>
-        <p style={{ color: 'rgba(255,255,255,.5)', fontSize: 11, marginTop: 16 }}>You can switch branches anytime from the header</p>
+        <p style={{ color: 'rgba(255,255,255,.4)', fontSize: 10, marginTop: 14, textAlign: 'center' }}>You can switch branches anytime from the header</p>
       </div>
     </div>
   );
@@ -181,54 +181,57 @@ function BranchSelector({ onSelect, userName, locations }) {
 
 // ─── Login Screen ────────────────────────────────────────────────────────────
 function LoginScreen({ onLogin, staffList }) {
+  // Force-remove any overflow:hidden from ancestors (belt-and-suspenders fix)
+  useEffect(() => {
+    const els = [document.documentElement, document.body, document.getElementById('root')];
+    const originals = els.map(el => el?.style.overflow);
+    els.forEach(el => { if (el) el.style.overflow = 'visible'; });
+    return () => els.forEach((el, i) => { if (el) el.style.overflow = originals[i] || ''; });
+  }, []);
+
   return (
     <div style={{
-      minHeight: '100vh', background: 'linear-gradient(145deg, #064E3B, #047857)',
-      display: 'flex', flexDirection: 'column',
+      position: 'fixed', top: 0, left: 0, right: 0, bottom: 0, zIndex: 999,
+      background: 'linear-gradient(145deg, #064E3B, #047857)',
       fontFamily: "'Segoe UI', sans-serif",
-      overflowY: 'auto', WebkitOverflowScrolling: 'touch',
+      display: 'flex', flexDirection: 'column',
     }}>
-      {/* Compact sticky header */}
-      <div style={{
-        textAlign: 'center', padding: '24px 20px 16px', flexShrink: 0,
-      }}>
-        <div style={{ fontSize: 44, marginBottom: 2 }}>🍛</div>
-        <h1 style={{ color: '#fff', fontSize: 24, fontWeight: 800, letterSpacing: -0.5, margin: 0 }}>Sizzle n Sambar</h1>
+      {/* Header — fixed at top */}
+      <div style={{ textAlign: 'center', padding: '20px 20px 12px', flexShrink: 0 }}>
+        <div style={{ fontSize: 40, marginBottom: 2 }}>🍛</div>
+        <h1 style={{ color: '#fff', fontSize: 22, fontWeight: 800, letterSpacing: -0.5, margin: 0 }}>Sizzle n Sambar</h1>
         <p style={{ color: '#A7F3D0', fontSize: 12, margin: '2px 0 0' }}>Daily Stock Tracker</p>
       </div>
 
-      {/* Scrollable staff list card */}
-      <div style={{
-        flex: 1, padding: '0 16px 24px', display: 'flex', flexDirection: 'column',
-        alignItems: 'center',
-      }}>
+      {/* Scrollable staff list */}
+      <div style={{ flex: 1, minHeight: 0, overflowY: 'scroll', WebkitOverflowScrolling: 'touch', padding: '0 16px 24px' }}>
         <div style={{
-          background: '#fff', borderRadius: 20, padding: '20px 18px',
-          boxShadow: '0 16px 60px rgba(0,0,0,.2)',
-          width: '100%', maxWidth: 440,
+          background: '#fff', borderRadius: 20, padding: '18px 16px',
+          boxShadow: '0 12px 50px rgba(0,0,0,.2)',
+          maxWidth: 440, margin: '0 auto',
         }}>
-          <h2 style={{ fontSize: 16, fontWeight: 700, color: '#064E3B', margin: '0 0 2px', textAlign: 'center' }}>Select Your Name</h2>
-          <p style={{ fontSize: 12, color: '#6B7280', margin: '0 0 14px', textAlign: 'center' }}>Your daily logs are linked to your account</p>
+          <h2 style={{ fontSize: 15, fontWeight: 700, color: '#064E3B', margin: '0 0 2px', textAlign: 'center' }}>Select Your Name</h2>
+          <p style={{ fontSize: 11, color: '#6B7280', margin: '0 0 12px', textAlign: 'center' }}>Tap to sign in and start logging stock</p>
           <div style={{ display: 'flex', flexDirection: 'column', gap: 6 }}>
             {staffList.map((s, i) => (
               <button key={s.id} onClick={() => onLogin(s)} style={{
-                display: 'flex', alignItems: 'center', gap: 12, background: '#F0FDF4',
-                border: '2px solid transparent', borderRadius: 14, padding: '11px 14px',
+                display: 'flex', alignItems: 'center', gap: 10, background: '#F0FDF4',
+                border: '2px solid transparent', borderRadius: 12, padding: '10px 12px',
                 cursor: 'pointer', textAlign: 'left', fontFamily: 'inherit',
-                animation: `fadeIn ${0.2 + i * 0.04}s ease`, transition: 'all .15s',
+                animation: `fadeIn ${0.15 + i * 0.03}s ease`, transition: 'all .15s',
               }} onMouseOver={e => { e.currentTarget.style.borderColor = '#10B981'; e.currentTarget.style.background = '#D1FAE5'; }}
                  onMouseOut={e => { e.currentTarget.style.borderColor = 'transparent'; e.currentTarget.style.background = '#F0FDF4'; }}>
-                <span style={{ fontSize: 26 }}>{s.avatar}</span>
+                <span style={{ fontSize: 24 }}>{s.avatar}</span>
                 <div style={{ flex: 1, minWidth: 0 }}>
-                  <div style={{ fontWeight: 700, fontSize: 14 }}>{s.name}</div>
-                  <div style={{ fontSize: 11, color: '#6B7280', marginTop: 1, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>{s.sections.join(' · ')}</div>
+                  <div style={{ fontWeight: 700, fontSize: 14, color: '#111' }}>{s.name}</div>
+                  <div style={{ fontSize: 10.5, color: '#6B7280', marginTop: 1, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>{s.sections.join(' · ')}</div>
                 </div>
-                <span style={{ color: '#10B981', fontSize: 18, flexShrink: 0 }}>→</span>
+                <span style={{ color: '#10B981', fontSize: 16, flexShrink: 0 }}>→</span>
               </button>
             ))}
           </div>
         </div>
-        <p style={{ color: 'rgba(255,255,255,.4)', fontSize: 11, marginTop: 14, textAlign: 'center' }}>
+        <p style={{ color: 'rgba(255,255,255,.35)', fontSize: 10, marginTop: 12, textAlign: 'center' }}>
           {staffList.length} staff members
         </p>
       </div>

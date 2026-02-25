@@ -67,7 +67,7 @@ export default function ManageScreen({ locations, sections, staff, onSave, onClo
   );
 
   return (
-    <div style={{ position: 'fixed', inset: 0, background: '#F9FAFB', zIndex: 200, display: 'flex', flexDirection: 'column', fontFamily: "'Segoe UI', sans-serif" }}>
+    <div style={{ position: 'fixed', top: 0, left: 0, right: 0, bottom: 0, background: '#F9FAFB', zIndex: 200, display: 'flex', flexDirection: 'column', fontFamily: "'Segoe UI', sans-serif" }}>
       {/* Header */}
       <div style={{ background: '#064E3B', color: '#fff', padding: '12px 16px', flexShrink: 0 }}>
         <div style={{ display: 'flex', alignItems: 'center', gap: 10, marginBottom: 10 }}>
